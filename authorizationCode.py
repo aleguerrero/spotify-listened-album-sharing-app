@@ -3,8 +3,8 @@ import base64
 import requests
 
 def authorize():
-    clientId = "8bb28bb2f4ae4ef99fd7a176223c8841"
-    secret = "e03bb69eaa174220849e0665e17ce6e2"
+    clientId = "<clientid>"
+    secret = "<secret>"
     redirectUri = "http://localhost:8888/"
     
     # URLS
