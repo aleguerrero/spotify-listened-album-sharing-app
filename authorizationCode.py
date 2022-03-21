@@ -3,8 +3,8 @@ import base64
 import requests
 
 def authorize():
-    clientId = "<clientid>"
-    secret = "<secret>"
+    clientId = "8bb28bb2f4ae4ef99fd7a176223c8841"
+    secret = "e03bb69eaa174220849e0665e17ce6e2"
 
     clientIdSecret = clientId + ':' + secret
     clientIdSecret_bytes = clientIdSecret.encode('ascii')
@@ -25,5 +25,18 @@ def authorize():
 
     if jsonResult.ok:
         print (jsonResult.json())
+
+def testApi(authentication):
+    url = 'https://api.spotify.com/v1/me/player/recently-played'
+
+    headers = {
+        'Authorization': 'Bearer ' + authentication
+    }
+
+    form = {
+        'grant_type': 'client_credentials'
+    }
+
+    jsonResult = requests.post(url, data=form, json=True, headers=headers)
 
 print(authorize())
