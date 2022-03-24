@@ -1,10 +1,19 @@
 from asyncio import base_events
 import base64
 import requests
+from flask import Flask
+import os
+
+# test flask
+app = Flask(__name__)
+
+@app.route("/")
+def hello_world():
+    return "<p>Hello, World!</p>"
 
 def authorize():
-    clientId = "8bb28bb2f4ae4ef99fd7a176223c8841"
-    secret = "e03bb69eaa174220849e0665e17ce6e2"
+    clientId = os.environ.get('ClientId')
+    secret = os.environ.get('Secret')
 
     clientIdSecret = clientId + ':' + secret
     clientIdSecret_bytes = clientIdSecret.encode('ascii')
@@ -24,19 +33,20 @@ def authorize():
     jsonResult = requests.post(url, data=form, json=True, headers=headers)
 
     if jsonResult.ok:
-        print (jsonResult.json())
+        response = jsonResult.json()
+        return response['access_token']
 
 def testApi(authentication):
     url = 'https://api.spotify.com/v1/me/player/recently-played'
 
     headers = {
-        'Authorization': 'Bearer ' + authentication
+        'Authorization': 'Bearer ' + str(authentication),
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
     }
 
-    form = {
-        'grant_type': 'client_credentials'
-    }
+    jsonResult = requests.get(url, json=True, headers=headers)
+    
+    print(jsonResult.json())
 
-    jsonResult = requests.post(url, data=form, json=True, headers=headers)
-
-print(authorize())
+testApi(authorize())
