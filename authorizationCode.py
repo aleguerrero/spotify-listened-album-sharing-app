@@ -62,7 +62,7 @@ def authorize():
                 'Authorization': 'Bearer ' + str(accessToken)
             }
 
-            recentPlayed = requests.get(url, json=True, headers=headers)
+            recentPlayed = requests.get(url, headers=headers)
 
             if recentPlayed.ok:
-                return recentPlayed 
+                return recentPlayed.json()
