@@ -33,10 +33,8 @@ def authorize():
     state = request.args.get('state')
     
     if state:
-        clientIdSecret = clientId + ':' + secret
-        clientIdSecret_bytes = clientIdSecret.encode('ascii')
-        base64_bytes = base64.b64encode(clientIdSecret_bytes)
-        base64_clientIdSecret = base64_bytes.decode('ascii')
+        
+        base64_clientIdSecret = encoding(clientId, secret)
 
         url = 'https://accounts.spotify.com/api/token'
 
@@ -55,6 +53,7 @@ def authorize():
         if jsonResult.ok:
             response = jsonResult.json()
             accessToken = response['access_token']
+            refreshToken = response['refresh_token']
 
             url = 'https://api.spotify.com/v1/me/player/recently-played'
 
@@ -65,4 +64,34 @@ def authorize():
             recentPlayed = requests.get(url, headers=headers)
 
             if recentPlayed.ok:
-                return recentPlayed.json()
+                recentPlayedResponse = recentPlayed.json()
+                
+
+@app.route("/refresh_token")
+def refreshToken():
+    refresh_token = request.args.get('refresh_token')
+    base64_clientIdSecret = encoding(clientId, secret)
+    url = 'https://accounts.spotify.com/api/token'
+    headers = {
+        'Authorization': 'Basic ' + base64_clientIdSecret
+    }
+    data = {
+        'grant_type': 'refresh_token',
+        'refresh_token': refresh_token
+    }
+
+    refreshTokenCall = requests.post(url, data=data, headers=headers)
+
+    if refreshTokenCall.ok:
+        response = refreshTokenCall.json()
+        accessToken = response['access_token']
+
+        return accessToken
+
+
+def encoding(clientId, secret):
+    clientIdSecret = clientId + ':' + secret
+    clientIdSecret_bytes = clientIdSecret.encode('ascii')
+    base64_bytes = base64.b64encode(clientIdSecret_bytes)
+    base64_clientIdSecret = base64_bytes.decode('ascii')
+    return base64_clientIdSecret
