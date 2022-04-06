@@ -5,6 +5,7 @@ from flask import Flask, redirect, request
 import os
 import string    
 import random
+import json
 
 # variables
 clientId = os.environ.get('ClientId')
@@ -64,7 +65,10 @@ def authorize():
             recentPlayed = requests.get(url, headers=headers)
 
             if recentPlayed.ok:
+
                 recentPlayedResponse = recentPlayed.json()
+                songs = recentPlayedResponse['items']['track']
+                return songs
                 
 
 @app.route("/refresh_token")
