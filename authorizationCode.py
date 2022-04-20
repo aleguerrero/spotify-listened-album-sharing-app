@@ -65,10 +65,12 @@ def authorize():
             recentPlayed = requests.get(url, headers=headers)
 
             if recentPlayed.ok:
-
                 recentPlayedResponse = recentPlayed.json()
-                songs = recentPlayedResponse['items']['track']
-                return songs
+                tracks = {}
+                for track in range(len(recentPlayedResponse['items'])):
+                    tracks[track] = recentPlayedResponse['items'][track]['track']
+                jsonReturned = json.dumps(tracks)
+                return json.loads(jsonReturned)
                 
 
 @app.route("/refresh_token")

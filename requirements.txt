@@ -1,3 +1,4 @@
 flask
 requests
 base64
+python-dotenv
