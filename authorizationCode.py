@@ -55,23 +55,7 @@ def authorize():
             response = jsonResult.json()
             accessToken = response['access_token']
             refreshToken = response['refresh_token']
-
-            url = 'https://api.spotify.com/v1/me/player/recently-played'
-
-            headers = {
-                'Authorization': 'Bearer ' + str(accessToken)
-            }
-
-            recentPlayed = requests.get(url, headers=headers)
-
-            if recentPlayed.ok:
-                recentPlayedResponse = recentPlayed.json()
-                tracks = {}
-                for track in range(len(recentPlayedResponse['items'])):
-                    tracks[track] = recentPlayedResponse['items'][track]['track']
-                jsonReturned = json.dumps(tracks)
-                return json.loads(jsonReturned)
-                
+            return accessToken
 
 @app.route("/refresh_token")
 def refreshToken():
