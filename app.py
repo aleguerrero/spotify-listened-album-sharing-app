@@ -83,10 +83,15 @@ def index():
 
         if recentPlayed.ok:
             recentPlayedResponse = recentPlayed.json()
-            # tracks = {}
-            # for track in range(len(recentPlayedResponse['items'])):
-            #     songName = recentPlayedResponse['items'][track]['track']['name']
-            #     artist = recentPlayedResponse['items'][track]['track']['album']['artists']['name']
+            tracks = {}
+            for item in range(len(recentPlayedResponse['items'])):
+                songName = recentPlayedResponse['items'][item]['track']['name']
+                trackNumber = recentPlayedResponse['items'][item]['track']['track_number']
+                artist = recentPlayedResponse['items'][item]['track']['album']['artists'][0]['name']
+                album = recentPlayedResponse['items'][item]['track']['album']['name']
+
+            # add class here
+
             jsonReturned = json.dumps(recentPlayedResponse)
             return json.loads(jsonReturned)
 
