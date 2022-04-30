@@ -1,5 +1,6 @@
 from asyncio import base_events
 import base64
+from crypt import methods
 import requests
 from flask import Flask, redirect, request
 import os
@@ -11,13 +12,22 @@ import json
 clientId = os.environ.get('ClientId')
 secret = os.environ.get('Secret')
 redirectUri = os.environ.get('redirectUri')
+# accessToken = ''
 
 # generates random string for authorization
 def randomStringGenerator(length):
     letters = string.ascii_letters
     return ''.join(random.choice(letters) for i in range(length))
 
-# test flask
+class Song:
+    def __init__(self, song, trackNumber, artist, album):
+        self.song = song
+        self.trackNumber = trackNumber
+        self.artist = artist
+        self.album = album
+    
+
+
 app = Flask(__name__)
 
 @app.route("/login", methods=['GET'])
@@ -25,11 +35,11 @@ def login():
     state = randomStringGenerator(16)
     scope = 'user-read-recently-played'
 
-    return redirect(f"https://accounts.spotify.com/authorize?response_type=code&client_id={clientId}&scope={scope}&redirect_uri={redirectUri}&state={state}")
+    authorizeUrl = f"https://accounts.spotify.com/authorize?response_type=code&client_id={clientId}&scope={scope}&redirect_uri={redirectUri}&state={state}"
+    return redirect(authorizeUrl)
 
 @app.route("/callback", methods=['GET'])
 def authorize():
-
     code = request.args.get('code')
     state = request.args.get('state')
     
@@ -53,9 +63,33 @@ def authorize():
 
         if jsonResult.ok:
             response = jsonResult.json()
-            accessToken = response['access_token']
-            refreshToken = response['refresh_token']
-            return accessToken
+            os.environ['accessToken'] = response['access_token']
+            return redirect('/')
+
+@app.route("/", methods=['GET'])
+def index():
+    if os.environ.get('accessToken') == None:
+        return redirect('/login')
+    else:
+        accessToken = os.environ.get('accessToken')
+        
+        url = 'https://api.spotify.com/v1/me/player/recently-played'
+
+        headers = {
+            'Authorization': 'Bearer ' + str(accessToken)
+        }
+
+        recentPlayed = requests.get(url, headers=headers)
+
+        if recentPlayed.ok:
+            recentPlayedResponse = recentPlayed.json()
+            # tracks = {}
+            # for track in range(len(recentPlayedResponse['items'])):
+            #     songName = recentPlayedResponse['items'][track]['track']['name']
+            #     artist = recentPlayedResponse['items'][track]['track']['album']['artists']['name']
+            jsonReturned = json.dumps(recentPlayedResponse)
+            return json.loads(jsonReturned)
+
 
 @app.route("/refresh_token")
 def refreshToken():
