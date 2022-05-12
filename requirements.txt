@@ -3,3 +3,4 @@ requests
 base64
 python-dotenv
 celery
+redis

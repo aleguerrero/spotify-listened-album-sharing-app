@@ -9,7 +9,6 @@ import string
 import random
 import json
 import time
-from celery import Celery
 
 # variables
 clientId = os.environ.get('ClientId')
@@ -37,29 +36,7 @@ class Album:
         self.artist = artist
         self.songs = songs
 
-# celery
-def make_celery(app):
-    celery = Celery(
-        app.import_name,
-        backend=app.config['CELERY_RESULT_BACKEND'],
-        broker=app.config['CELERY_BROKER_URL']
-    )
-    celery.conf.update(app.config)
-
-    class ContextTask(celery.Task):
-        def __call__(self, *args, **kwargs):
-            with app.app_context():
-                return self.run(*args, **kwargs)
-
-    celery.Task = ContextTask
-    return celery
-
 app = Flask(__name__)
-app.config.update(
-    CELERY_BROKER_URL='redis://localhost:6379',
-    CELERY_RESULT_BACKEND='redis://localhost:6379'
-)
-celery = make_celery(app)
 
 # Gets link to redirect the callback and get a token
 @app.route("/login", methods=['GET'])
@@ -132,7 +109,7 @@ def getRecentlyPlayedTracks():
                 tracks[item] = song.__dict__
             
             jsonReturned = json.dumps(tracks)
-            return json.loads(jsonReturned)
+            return jsonReturned
 
 # get the info of the album by id
 @app.route("/getAlbum/<string:albumId>", methods=['GET'])
@@ -154,15 +131,6 @@ def getAlbum(albumId):
             albumResponse = albums.json()
             jsonReturned = json.dumps(albumResponse)
             return json.loads(jsonReturned)
-
-@celery.task()
-def timer():
-    try:
-        time.sleep(10)
-        return redirect('/getRecentlyPlayedTracks')
-    except Exception as e:
-        return e
-    
 
 @app.route("/refresh_token")
 def refreshToken():
@@ -193,7 +161,12 @@ def encoding(clientId, secret):
     base64_clientIdSecret = base64_bytes.decode('ascii')
     return base64_clientIdSecret
 
-# def requestFunction(url, headers, form, method):
-#     if method == 'GET':
-#         requests.get()
-#     elif method == 'POST':
+def init():
+    try:
+        results = getRecentlyPlayedTracks()
+    except Exception as e:
+        print(e)
+
+    print (results)
+
+init()
