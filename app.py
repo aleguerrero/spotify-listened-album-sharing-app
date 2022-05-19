@@ -3,7 +3,7 @@ import base64
 from crypt import methods
 import threading
 import requests
-from flask import Flask, redirect, request
+from flask import Flask, redirect, request, jsonify
 import os
 import string    
 import random
@@ -14,6 +14,8 @@ import time
 clientId = os.environ.get('ClientId')
 secret = os.environ.get('Secret')
 redirectUri = os.environ.get('redirectUri')
+
+# Get Album and Re
 
 # generates random string for authorization
 def randomStringGenerator(length):
@@ -74,7 +76,8 @@ def authorize():
         if jsonResult.ok:
             response = jsonResult.json()
             os.environ['accessToken'] = response['access_token']
-            return redirect('/getRecentlyPlayedTracks')
+            grptThread.start()
+            return 'Got Access Token!' 
 
 # Gets the latest 20 songs listened
 @app.route("/getRecentlyPlayedTracks", methods=['GET'])
@@ -82,34 +85,35 @@ def getRecentlyPlayedTracks():
     if os.environ.get('accessToken') == None:
         return redirect('/login')
     else:
-        accessToken = os.environ.get('accessToken')
-        
-        url = 'https://api.spotify.com/v1/me/player/recently-played'
-
-        headers = {
-            'Authorization': 'Bearer ' + str(accessToken)
-        }
-
-        recentPlayed = requests.get(url, headers=headers)
-
-        if recentPlayed.ok:
-            recentPlayedResponse = recentPlayed.json()
-            tracks = {}
-            for item in range(len(recentPlayedResponse['items'])):
-                songId = recentPlayedResponse['items'][item]['track']['id']
-                songName = recentPlayedResponse['items'][item]['track']['name']
-                trackNumber = recentPlayedResponse['items'][item]['track']['track_number']
-                artist = recentPlayedResponse['items'][item]['track']['album']['artists'][0]['name']
-                album = recentPlayedResponse['items'][item]['track']['album']['name']
-                albumId = recentPlayedResponse['items'][item]['track']['album']['id']
-
-                # add class here
-                song = Song(songId, songName, trackNumber, artist, albumId, album)
-
-                tracks[item] = song.__dict__
+        while True:
+            accessToken = os.environ.get('accessToken')
             
-            jsonReturned = json.dumps(tracks)
-            return jsonReturned
+            url = 'https://api.spotify.com/v1/me/player/recently-played'
+
+            headers = {
+                'Authorization': 'Bearer ' + str(accessToken)
+            }
+
+            recentPlayed = requests.get(url, headers=headers)
+
+            if recentPlayed.ok:
+                recentPlayedResponse = recentPlayed.json()
+                tracks = {}
+                for item in range(len(recentPlayedResponse['items'])):
+                    songId = recentPlayedResponse['items'][item]['track']['id']
+                    songName = recentPlayedResponse['items'][item]['track']['name']
+                    trackNumber = recentPlayedResponse['items'][item]['track']['track_number']
+                    artist = recentPlayedResponse['items'][item]['track']['album']['artists'][0]['name']
+                    album = recentPlayedResponse['items'][item]['track']['album']['name']
+                    albumId = recentPlayedResponse['items'][item]['track']['album']['id']
+
+                    # add class here
+                    song = Song(songId, songName, trackNumber, artist, albumId, album)
+
+                    tracks[item] = song.__dict__
+                
+                print(tracks)
+            time.sleep(10)
 
 # get the info of the album by id
 @app.route("/getAlbum/<string:albumId>", methods=['GET'])
@@ -131,6 +135,8 @@ def getAlbum(albumId):
             albumResponse = albums.json()
             jsonReturned = json.dumps(albumResponse)
             return json.loads(jsonReturned)
+
+# def startCountAlbum()
 
 @app.route("/refresh_token")
 def refreshToken():
@@ -161,12 +167,4 @@ def encoding(clientId, secret):
     base64_clientIdSecret = base64_bytes.decode('ascii')
     return base64_clientIdSecret
 
-def init():
-    try:
-        results = getRecentlyPlayedTracks()
-    except Exception as e:
-        print(e)
-
-    print (results)
-
-init()
+grptThread = threading.Timer(10, getRecentlyPlayedTracks)
