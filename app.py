@@ -15,7 +15,8 @@ clientId = os.environ.get('ClientId')
 secret = os.environ.get('Secret')
 redirectUri = os.environ.get('redirectUri')
 
-# Get Album and Re
+# Get Album
+album = None
 
 # generates random string for authorization
 def randomStringGenerator(length):
@@ -23,13 +24,14 @@ def randomStringGenerator(length):
     return ''.join(random.choice(letters) for i in range(length))
 
 class Song:
-    def __init__(self, songId, song, trackNumber, artist, albumId, album):
+    def __init__(self, songId, song, trackNumber, artist, albumId, album, listened):
         self.songId = songId
         self.song = song
         self.trackNumber = trackNumber
         self.artist = artist
         self.albumId = albumId
         self.album = album
+        self.listened = listened
     
 class Album:
     def __init__(self, albumId, albumName, artist, songs) -> None:
@@ -98,45 +100,76 @@ def getRecentlyPlayedTracks():
 
             if recentPlayed.ok:
                 recentPlayedResponse = recentPlayed.json()
-                tracks = {}
-                for item in range(len(recentPlayedResponse['items'])):
-                    songId = recentPlayedResponse['items'][item]['track']['id']
-                    songName = recentPlayedResponse['items'][item]['track']['name']
-                    trackNumber = recentPlayedResponse['items'][item]['track']['track_number']
-                    artist = recentPlayedResponse['items'][item]['track']['album']['artists'][0]['name']
-                    album = recentPlayedResponse['items'][item]['track']['album']['name']
-                    albumId = recentPlayedResponse['items'][item]['track']['album']['id']
 
-                    # add class here
-                    song = Song(songId, songName, trackNumber, artist, albumId, album)
+                songId = recentPlayedResponse['items'][0]['track']['id']
+                songName = recentPlayedResponse['items'][0]['track']['name']
+                trackNumber = recentPlayedResponse['items'][0]['track']['track_number']
+                artist = recentPlayedResponse['items'][0]['track']['album']['artists'][0]['name']
+                albumSong = recentPlayedResponse['items'][0]['track']['album']['name']
+                albumId = recentPlayedResponse['items'][0]['track']['album']['id']
 
-                    tracks[item] = song.__dict__
+                # add class here
+                song = Song(songId, songName, trackNumber, artist, albumId, albumSong, True)
                 
-                print(tracks)
+                print(song.__dict__)
+
+                if song.trackNumber == 1:
+                    if album == None:
+                        album = getAlbum(song)
+
             time.sleep(10)
 
 # get the info of the album by id
 @app.route("/getAlbum/<string:albumId>", methods=['GET'])
-def getAlbum(albumId):
+def getAlbum(song):
     if os.environ.get('accessToken') == None:
         return redirect('/login')
     else:
         accessToken = os.environ.get('accessToken')
         
-        url = f'https://api.spotify.com/v1/albums/{albumId}/tracks'
+        url = f'https://api.spotify.com/v1/albums/{song.albumId}'
 
         headers = {
             'Authorization': 'Bearer ' + str(accessToken)
         }
 
-        albums = requests.get(url, headers=headers)
+        albumTracks = requests.get(url, headers=headers)
 
-        if albums.ok:
-            albumResponse = albums.json()
-            jsonReturned = json.dumps(albumResponse)
-            return json.loads(jsonReturned)
+        if albumTracks.ok:
+            albumResponse = albumTracks.json()
+            
+            # creates album
+            album = Album(
+                albumId=albumResponse['id'],
+                albumName=albumResponse['name'],
+                artist=albumResponse['artists'][0]['name'],
+                songs=None
+            )
 
-# def startCountAlbum()
+            # creates songs array and adds them
+            songsArray = []
+            for i, track in enumerate(albumResponse['tracks']['items']):
+                songToAdd = Song(
+                    songId=track['id'],
+                    song=track['name'],
+                    trackNumber=track['track_number'],
+                    artist=track['artists'][0]['name'],
+                    albumId=album.albumId,
+                    album=album.albumName,
+                    listened=None
+                )
+
+                songToAdd.listened=True if song.songId == songToAdd.songId else False
+
+                songsArray.append(songToAdd)
+
+            album.songs=songsArray
+        
+            print(album.__dict__)
+
+# def startCountAlbum(tracks) {
+    
+# }
 
 @app.route("/refresh_token")
 def refreshToken():
