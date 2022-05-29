@@ -101,33 +101,39 @@ def getRecentlyPlayedTracks():
             if recentPlayed.ok:
                 recentPlayedResponse = recentPlayed.json()
 
-                songId = recentPlayedResponse['items'][0]['track']['id']
-                songName = recentPlayedResponse['items'][0]['track']['name']
+                # songId = recentPlayedResponse['items'][0]['track']['id']
+                # songName = recentPlayedResponse['items'][0]['track']['name']
                 trackNumber = recentPlayedResponse['items'][0]['track']['track_number']
-                artist = recentPlayedResponse['items'][0]['track']['album']['artists'][0]['name']
-                albumSong = recentPlayedResponse['items'][0]['track']['album']['name']
+                # artist = recentPlayedResponse['items'][0]['track']['album']['artists'][0]['name']
+                # albumSong = recentPlayedResponse['items'][0]['track']['album']['name']
                 albumId = recentPlayedResponse['items'][0]['track']['album']['id']
 
                 # add class here
-                song = Song(songId, songName, trackNumber, artist, albumId, albumSong, True)
+                # song = Song(songId, songName, trackNumber, artist, albumId, albumSong, True)
                 
-                print(song.__dict__)
+                # print(song.__dict__)
 
-                if song.trackNumber == 1:
-                    if album == None:
-                        album = getAlbum(song)
+                global album
+
+                if trackNumber == 1:
+                    if album == None or album.albumId != albumId:
+                        album = getAlbum(albumId)
+                    
+                elif album != None and album.albumId == albumId:
+                    if album.songs[trackNumber].listened == False:
+                        album.songs[trackNumber].listened = True                 
 
             time.sleep(10)
 
 # get the info of the album by id
 @app.route("/getAlbum/<string:albumId>", methods=['GET'])
-def getAlbum(song):
+def getAlbum(albumId):
     if os.environ.get('accessToken') == None:
         return redirect('/login')
     else:
         accessToken = os.environ.get('accessToken')
         
-        url = f'https://api.spotify.com/v1/albums/{song.albumId}'
+        url = f'https://api.spotify.com/v1/albums/{albumId}'
 
         headers = {
             'Authorization': 'Bearer ' + str(accessToken)
@@ -139,7 +145,7 @@ def getAlbum(song):
             albumResponse = albumTracks.json()
             
             # creates album
-            album = Album(
+            albumToCreate = Album(
                 albumId=albumResponse['id'],
                 albumName=albumResponse['name'],
                 artist=albumResponse['artists'][0]['name'],
@@ -147,29 +153,36 @@ def getAlbum(song):
             )
 
             # creates songs array and adds them
-            songsArray = []
-            for i, track in enumerate(albumResponse['tracks']['items']):
-                songToAdd = Song(
+            songsArray = {}
+            for track in albumResponse['tracks']['items']:
+                songsArray[track['track_number']] = Song(
                     songId=track['id'],
                     song=track['name'],
                     trackNumber=track['track_number'],
                     artist=track['artists'][0]['name'],
-                    albumId=album.albumId,
-                    album=album.albumName,
-                    listened=None
+                    albumId=albumToCreate.albumId,
+                    album=albumToCreate.albumName,
+                    listened=False
                 )
 
-                songToAdd.listened=True if song.songId == songToAdd.songId else False
+            songsArray[1].listened=True
 
-                songsArray.append(songToAdd)
+            albumToCreate.songs=songsArray
 
-            album.songs=songsArray
-        
-            print(album.__dict__)
+            return albumToCreate
 
-# def startCountAlbum(tracks) {
+@app.route("/getAlbumProgress")
+def getAlbumProgress():
+    global album
+    if album != None:
+        albumDict = album.__dict__
+        songsDict = []
+        for i, (trackNumber, song) in enumerate(album.songs.items()):
+            songsDict[trackNumber] = song.__dict__
+        albumDict['songs'] = songsDict
+        return jsonify(albumDict)
     
-# }
+    return 'No album yet'
 
 @app.route("/refresh_token")
 def refreshToken():
