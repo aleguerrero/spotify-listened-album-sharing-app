@@ -1,6 +1,7 @@
 from asyncio import base_events
 import base64
 from crypt import methods
+from pickle import NONE
 import threading
 import requests
 from flask import Flask, redirect, request, jsonify
@@ -17,6 +18,7 @@ redirectUri = os.environ.get('redirectUri')
 
 # Get Album
 album = None
+songCount = 0
 
 # generates random string for authorization
 def randomStringGenerator(length):
@@ -101,27 +103,28 @@ def getRecentlyPlayedTracks():
             if recentPlayed.ok:
                 recentPlayedResponse = recentPlayed.json()
 
-                # songId = recentPlayedResponse['items'][0]['track']['id']
-                # songName = recentPlayedResponse['items'][0]['track']['name']
                 trackNumber = recentPlayedResponse['items'][0]['track']['track_number']
-                # artist = recentPlayedResponse['items'][0]['track']['album']['artists'][0]['name']
-                # albumSong = recentPlayedResponse['items'][0]['track']['album']['name']
                 albumId = recentPlayedResponse['items'][0]['track']['album']['id']
 
-                # add class here
-                # song = Song(songId, songName, trackNumber, artist, albumId, albumSong, True)
-                
-                # print(song.__dict__)
-
                 global album
+                global songCount
 
                 if trackNumber == 1:
                     if album == None or album.albumId != albumId:
-                        album = getAlbum(albumId)
-                    
+                        songCount = 0
+                        album = getAlbum(albumId)        
                 elif album != None and album.albumId == albumId:
-                    if album.songs[trackNumber].listened == False:
-                        album.songs[trackNumber].listened = True                 
+                    if album.songs[trackNumber - 1].listened == False:
+                        album.songs[trackNumber - 1].listened = True
+                        songCount += 1
+                try:
+                    if songCount == len(album.songs):
+                        print (f'The album of the day is {album.albumName} by {album.artist}')
+                        songCount = 0
+                except:
+                    pass
+            else:
+                refreshToken()
 
             time.sleep(10)
 
@@ -142,6 +145,9 @@ def getAlbum(albumId):
         albumTracks = requests.get(url, headers=headers)
 
         if albumTracks.ok:
+
+            global songCount
+
             albumResponse = albumTracks.json()
             
             # creates album
@@ -155,7 +161,7 @@ def getAlbum(albumId):
             # creates songs array and adds them
             songsArray = {}
             for track in albumResponse['tracks']['items']:
-                songsArray[track['track_number']] = Song(
+                songsArray[track['track_number'] - 1] = Song(
                     songId=track['id'],
                     song=track['name'],
                     trackNumber=track['track_number'],
@@ -165,7 +171,9 @@ def getAlbum(albumId):
                     listened=False
                 )
 
-            songsArray[1].listened=True
+            songsArray[0].listened=True
+
+            songCount += 1
 
             albumToCreate.songs=songsArray
 
@@ -173,16 +181,25 @@ def getAlbum(albumId):
 
 @app.route("/getAlbumProgress")
 def getAlbumProgress():
-    global album
-    if album != None:
-        albumDict = album.__dict__
-        songsDict = []
-        for i, (trackNumber, song) in enumerate(album.songs.items()):
-            songsDict[trackNumber] = song.__dict__
-        albumDict['songs'] = songsDict
-        return jsonify(albumDict)
     
-    return 'No album yet'
+    global album
+
+    if album == None:
+        return 'No album yet'
+        
+    albumDict = Album(
+        album.albumId,
+        album.albumName,
+        album.artist,
+        album.songs
+        )
+    songsDict = {}
+    for i in range(len(albumDict.songs)):
+        songsDict[i] = albumDict.songs[i].__dict__
+
+    albumDict.songs = songsDict
+
+    return jsonify(albumDict.__dict__)
 
 @app.route("/refresh_token")
 def refreshToken():
@@ -202,9 +219,9 @@ def refreshToken():
     if refreshTokenCall.ok:
         response = refreshTokenCall.json()
         accessToken = response['access_token']
+        os.environ['accessToken'] = accessToken
 
         return accessToken
-
 
 def encoding(clientId, secret):
     clientIdSecret = clientId + ':' + secret
