@@ -105,18 +105,20 @@ def getRecentlyPlayedTracks():
 
                 trackNumber = recentPlayedResponse['items'][0]['track']['track_number']
                 albumId = recentPlayedResponse['items'][0]['track']['album']['id']
+                isAlbum = True if recentPlayedResponse['items'][0]['track']['album']['album_type'] == 'album' else False
 
                 global album
                 global songCount
 
-                if trackNumber == 1:
-                    if album == None or album.albumId != albumId:
-                        songCount = 0
-                        album = getAlbum(albumId)        
-                elif album != None and album.albumId == albumId:
-                    if album.songs[trackNumber - 1].listened == False:
-                        album.songs[trackNumber - 1].listened = True
-                        songCount += 1
+                if isAlbum:
+                    if trackNumber == 1:
+                        if album == None or album.albumId != albumId:
+                            songCount = 0
+                            album = getAlbum(albumId)        
+                    elif album != None and album.albumId == albumId:
+                        if album.songs[trackNumber - 1].listened == False:
+                            album.songs[trackNumber - 1].listened = True
+                            songCount += 1
                 try:
                     if songCount == len(album.songs):
                         print (f'The album of the day is {album.albumName} by {album.artist}')
@@ -229,5 +231,6 @@ def encoding(clientId, secret):
     base64_bytes = base64.b64encode(clientIdSecret_bytes)
     base64_clientIdSecret = base64_bytes.decode('ascii')
     return base64_clientIdSecret
+
 
 grptThread = threading.Timer(10, getRecentlyPlayedTracks)
